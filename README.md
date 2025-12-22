@@ -1,0 +1,189 @@
+# Automating with Python
+
+A collection of Python automation scripts demonstrating practical programming skills, efficient algorithms, and best practices. Each project showcases different aspects of Python development including concurrent processing, data manipulation, API integration, and more.
+
+**Purpose**: This repository serves as a portfolio of Python scripting capabilities, built in my free time to demonstrate proficiency in automation and problem-solving.
+
+## Projects
+
+### 1. Password Hash Cracker
+
+**Status**: ✅ Complete
+
+A concurrent password hash cracking tool that demonstrates parallel processing using Python's `ProcessPoolExecutor`. This project is designed for educational purposes to learn about concurrency, CPU-bound tasks, and efficient work distribution.
+
+**Educational Use Only**: This tool is intended for:
+- Learning about concurrent programming in Python
+- Testing your own passwords
+- Authorized security assessments with proper permission
+- Understanding password security concepts
+
+## Features
+
+- **Concurrent Processing**: Uses `ProcessPoolExecutor` to distribute workload across multiple CPU cores
+- **Intelligent Chunking**: Automatically calculates optimal chunk sizes based on available CPU cores
+- **Early Termination**: Stops processing as soon as password is found
+- **SHA-256 Hashing**: Fast cryptographic hashing for educational demonstrations
+- **Large Wordlist Support**: Handles large wordlists like rockyou.txt efficiently
+- **Error Handling**: Validates files and handles encoding issues
+
+## Setup
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd automating-with-python
+```
+
+2. Create and activate a virtual environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Prepare wordlist (if using rockyou.txt):
+```bash
+unzip wordlists/rockyou.txt.zip -d wordlists/
+```
+
+## Usage
+
+### Basic Usage
+
+```bash
+python password_cracking/hashbreaker.py --wordlist <path_to_wordlist> --hash <sha256_hash>
+```
+
+### Example
+
+Generate a test hash:
+```python
+import hashlib
+password = "password123"
+test_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+print(test_hash)
+# Output: ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f
+```
+
+Run the cracker:
+```bash
+python password_cracking/hashbreaker.py --wordlist wordlists/rockyou.txt --hash ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f
+```
+
+## How It Works
+
+1. **Wordlist Loading**: Reads the entire wordlist into memory with proper encoding handling
+2. **Chunk Calculation**: Calculates optimal chunk size based on:
+   - Number of CPU cores available
+   - Target of 8 chunks per worker for load balancing
+   - Min/max bounds (1,000 - 100,000 words per chunk)
+3. **Work Distribution**: Splits wordlist into chunks and distributes to worker processes
+4. **Parallel Hashing**: Each worker process:
+   - Receives a chunk of passwords
+   - Hashes each password with SHA-256
+   - Compares against target hash
+   - Returns match or None
+5. **Result Collection**: Uses `as_completed()` to process results as they finish, enabling early termination
+
+## Performance
+
+The concurrent approach provides significant speedup on multi-core systems:
+- **Single-threaded**: Limited by single CPU core
+- **Multi-process**: Scales with available CPU cores
+- Typical speedup: 4-8x on modern systems (depending on core count)
+
+### Performance Comparison Tool
+
+A single-threaded brute force implementation (`brute_force.py`) is included to benchmark and compare execution times against the concurrent version (`hashbreaker.py`). This allows you to see the real-world performance difference between sequential and parallel processing.
+
+**Run the single-threaded version:**
+```bash
+python password_cracking/brute_force.py --wordlist <path_to_wordlist> --hash <sha256_hash>
+```
+
+**Run the concurrent version:**
+```bash
+python password_cracking/hashbreaker.py --wordlist <path_to_wordlist> --hash <sha256_hash>
+```
+
+Both scripts will display the time taken to find the password, allowing direct comparison of single-threaded vs. multi-process performance on your system.
+
+## Project Structure
+
+```
+automating-with-python/
+├── password_cracking/
+│   ├── hashbreaker.py                        # Concurrent password cracker (multi-process)
+│   ├── brute_force.py                        # Single-threaded baseline for comparison
+│   └── Password Cracker Concurrency Guide.md # Educational guide
+├── wordlists/
+│   └── rockyou.txt.zip                       # Compressed wordlist
+├── requirements.txt                          # Python dependencies
+├── README.md                                 # This file
+└── CLAUDE.md                                 # Guide for Claude Code
+```
+
+## Important Notes
+
+- **SHA-256 is NOT secure for real password storage**: Production systems should use bcrypt, scrypt, or Argon2
+- **CPU-Bound Task**: Uses ProcessPoolExecutor instead of ThreadPoolExecutor to avoid Python's GIL
+- **Memory Usage**: Loads entire wordlist into memory (rockyou.txt ~130MB uncompressed)
+- **Encoding**: Uses latin-1 encoding to handle non-UTF-8 characters in wordlists
+
+## Legal Disclaimer
+
+This tool is for **educational purposes only**. Only use this software:
+- On systems you own
+- With explicit written permission for security testing
+- In controlled educational environments
+- For testing your own passwords
+
+Unauthorized access to computer systems is illegal. The authors assume no liability for misuse of this software.
+
+#### Future Enhancements
+
+Potential improvements to explore:
+- Support for multiple hashing algorithms (MD5, SHA-1, bcrypt)
+- Command-line argument for worker count
+- Progress bar with completion percentage
+- Resume capability for interrupted sessions
+- GPU acceleration for hash computation
+- Password mutation rules (capitals, numbers, symbols)
+
+---
+
+### 2. Coming Soon...
+
+**Status**: 🚧 In Development
+
+More automation scripts are on the way! Future projects will explore:
+- Web scraping and data extraction
+- API integration and automation
+- File processing and batch operations
+- Network automation
+- Data analysis and reporting
+- System administration tasks
+
+Check back soon for updates!
+
+---
+
+## About This Repository
+
+This repository is an ongoing project showcasing my Python development skills through practical automation scripts. Each project is:
+- **Self-contained**: Can be run independently
+- **Well-documented**: Clear usage instructions and code comments
+- **Production-minded**: Follows best practices for error handling, performance, and maintainability
+
+## Contributing
+
+These are personal learning projects, but suggestions and feedback are welcome! Feel free to open an issue if you spot bugs or have ideas for improvements.
+
+## License
+
+Educational project - use responsibly and ethically.
