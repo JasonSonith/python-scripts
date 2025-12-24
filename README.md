@@ -22,6 +22,27 @@ python password_cracking/hashbreaker.py --wordlist wordlists/rockyou.txt --hash 
 
 **For educational purposes only.** Don't use this on systems you don't own.
 
+### File Encryptor/Decryptor
+
+A simple encryption tool that locks down all files in a directory using Fernet encryption. Uses PBKDF2 to turn your password into a secure key. Built this to learn how symmetric encryption works in practice.
+
+**Features:**
+- Password-based encryption (no need to manage key files)
+- Recursively encrypts all files in subdirectories
+- Uses `ThreadPoolExecutor` for faster encryption on large directories
+- Skips `.py` and `.env` files so you don't accidentally lock yourself out
+
+**Usage:**
+```bash
+# Encrypt a directory
+python ransomware/encrypt.py --path /path/to/folder
+
+# Decrypt it back
+python ransomware/decrypt.py --path /path/to/folder
+```
+
+**For educational purposes only.** Seriously, don't be that person.
+
 ### More Coming
 
 Planning to add scripts for web scraping, API automation, and network tools as I build them out.
@@ -44,6 +65,10 @@ python-scripts/
 │   ├── hashbreaker.py      # Concurrent version
 │   ├── brute_force.py      # Single-threaded baseline
 │   └── guide.md
+├── ransomware/
+│   ├── encrypt.py          # Encrypts files in a directory
+│   ├── decrypt.py          # Decrypts them back
+│   └── test/               # Test directory for trying it out
 ├── wordlists/
 ├── requirements.txt
 └── README.md
