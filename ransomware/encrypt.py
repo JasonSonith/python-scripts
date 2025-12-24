@@ -45,7 +45,6 @@ def derive_key(password, salt: bytes = None):
     return key,salt
 
 password = getpass("Enter your password: ")
-print('\n')
 key, salt = derive_key(password)
 cipher = Fernet(key)
 
