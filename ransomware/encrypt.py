@@ -1,23 +1,39 @@
 import argparse
 import base64
+from concurrent.futures import ThreadPoolExecutor
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from getpass import getpass
 import os
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description="Encrypts files in a entire directory.")
-parser.add_argument('--path', type = str, required = True)
+parser.add_argument('--path', type = str, required = False)
 args = parser.parse_args()
-dir = Path(args.path)
+
+#used for making a test directory - can comment out
+def make_test_dir():
+    os.mkdir("test")
+    os.chdir("test")
+    os.system("echo \"test\" > test.txt")
+    os.system("echo \"print(\'hello world\')\" > hello-world.py")
+    os.mkdir("sub-dir")
+    os.system("echo \"hello\" > sub-dir/hello.txt")
+    path = Path.cwd()
+    return path
+
+if args.path:
+    dir = Path(args.path)
+else:
+    dir = make_test_dir()
 
 #derive key from a password
 def derive_key(password, salt: bytes = None):
     if salt is None:
         salt = os.urandom(16)
     
-    kdf = PBKDF2(
+    kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
@@ -29,13 +45,15 @@ def derive_key(password, salt: bytes = None):
     return key,salt
 
 password = getpass("Enter your password: ")
+print('\n')
 key, salt = derive_key(password)
 cipher = Fernet(key)
 
-with open('salt.txt', 'wb') as f:
+with open(dir.parent / 'salt.txt', 'wb') as f:
     f.write(salt)
 
 def encrypt(file):
+    print(f"Encrypting {file}...")
     with open(file, 'rb') as f:
         contents = f.read()
     contents_encrypted = cipher.encrypt(contents)
@@ -44,10 +62,10 @@ def encrypt(file):
         f.write(contents_encrypted)
 
 def main():
-    for file in dir.rglob('*'):
-        if file.name.endswith((".py,")) or file.name == (".env") or file.is_dir():
-            continue
-        encrypt(file)
+    files = [file for file in dir.rglob('*') if not (file.suffix == ".py" or file.name == ".env" or file.is_dir())]
+    
+    with ThreadPoolExecutor (max_workers = os.cpu_count()) as executor:
+        executor.map(encrypt,files)
 
 if __name__ == "__main__":
     main()
