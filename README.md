@@ -43,9 +43,26 @@ python ransomware/decrypt.py --path /path/to/folder
 
 **For educational purposes only.** Seriously, don't be that person.
 
+### Network Scanner
+
+A multi-threaded port scanner that checks TCP and UDP ports and grabs banners from open services. Built to understand socket programming and how network recon tools work.
+
+**Features:**
+- TCP and UDP scanning with banner grabbing
+- Concurrent scanning with configurable thread count
+- Built-in probes for common UDP services (DNS, NTP, SNMP)
+- Progress bar using Rich
+
+**Usage:**
+```bash
+python network-scanner/scanner.py --target 192.168.1.1 --ports 1-1000 --timeout 2.0 --threads 8
+```
+
+**For educational purposes only.** Use on your own networks or with explicit permission.
+
 ### More Coming
 
-Planning to add scripts for web scraping, API automation, and network tools as I build them out.
+Planning to add scripts for web scraping and API automation as I build them out.
 
 ## Setup
 
@@ -69,6 +86,8 @@ python-scripts/
 │   ├── encrypt.py          # Encrypts files in a directory
 │   ├── decrypt.py          # Decrypts them back
 │   └── test/               # Test directory for trying it out
+├── network-scanner/
+│   └── scanner.py          # TCP/UDP port scanner
 ├── wordlists/
 ├── requirements.txt
 └── README.md
