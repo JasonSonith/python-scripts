@@ -24,6 +24,8 @@ class WebEnumeration:
     def run_nmap(self, ip):
         subprocess.run('nmap -sC -sV -p- -oX nmap.xml -oN nmap.txt {ip}')
         file = 'nmap.xml'
+        tree = ET.parse(file)
+        root = tree.getroot()
 
         ports = {}
 
@@ -37,7 +39,7 @@ class WebEnumeration:
                     ports[port]['product'] = elm.find('service').get('product')
                     ports[port]['version'] = elm.find('service').get('version')
 
-                if elm.find('state') is Not None:
+                if elm.find('state') is not None:
                     ports[port]['state'] = elm.find('state').get('state')
 
 
