@@ -49,8 +49,8 @@ class WebEnumeration:
             return ports
 
 
-    def run_gobuster(self):
-        pass
+    def run_gobuster(self, ip, port):
+        subprocess.run(f'')
 
     def run_ffuf(self):
         pass
@@ -60,7 +60,7 @@ class WebEnumeration:
 
 def main():
     enum = WebEnumeration()
-    enum.run_nmap(ip)
+    ports = enum.run_nmap(ip)
 
 if __name__ == '__main__':
     main()
