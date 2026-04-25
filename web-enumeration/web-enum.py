@@ -46,7 +46,7 @@ class WebEnumeration:
         except Exception as e:
             print('[+] Error: could not parse XML tree')
 
-            return tags
+            return ports
 
 
     def run_gobuster(self):
