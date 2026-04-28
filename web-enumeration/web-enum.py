@@ -21,8 +21,8 @@ class WebEnumeration:
     def __init__(self):
         self.ip = ip
 
-    def run_nmap(self, ip):
-        subprocess.run('nmap -sC -sV -p- -oX nmap.xml -oN nmap.txt {ip}')
+    def run_nmap(self, ip: str):
+        subprocess.run(['nmap', '-sC', '-sV', '-p-','-oX', 'nmap.xml', '-oN', 'nmap.txt', f'{ip}'], check=True)
         file = 'nmap.xml'
         tree = ET.parse(file)
         root = tree.getroot()
@@ -49,13 +49,24 @@ class WebEnumeration:
             return ports
 
 
-    def run_gobuster(self, ip, port):
-        subprocess.run(f'')
+    def run_gobuster(self, ip: str, ports: list):
+        dir_ports = set()
+        port = None
+
+        for key, value, in ports.items():
+            if 'http' in value['service_name']:
+                port = {key}
+                print(f"[+] {value['service_name']} found in {key}")
+
+            if port is not None:
+                url = f"http://{ip}:{port}"
+                wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+                mode = "dir"
+                #CONTINUE HERE, ADD SUBPROCESS CMD
+
+
 
     def run_ffuf(self):
-        pass
-
-    def run_hashcat(self):
         pass
 
 def main():
