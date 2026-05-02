@@ -20,5 +20,6 @@ for elm in root.findall('.//port'):
 	port = int(elm.get('portid'))
 	ports[port] = {}
 	ports[port]['service_name'] = elm.find('service').get('name')
+	ports[port]['product'] = elm.find('service').get('product')
 
 print(ports)

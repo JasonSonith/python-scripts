@@ -3,6 +3,7 @@ import pathlib
 import xml.etree.ElementTree as ET
 import argparse
 import sys
+import requests
 
 
 parser = argparse.ArgumentParser(description="Automated web enumeration tool")
@@ -57,21 +58,39 @@ class WebEnumeration:
             if 'http' in value['service_name']:
                 port = {key}
                 print(f"[+] {value['service_name']} found in {key}")
+                break
 
-            if port is not None:
-                url = f"http://{ip}:{port}"
-                wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
-                mode = "dir"
-                #CONTINUE HERE, ADD SUBPROCESS CMD
+        if port is not None:
+            url = f"http://{ip}:{port}"
+            is_vhost = _check_vhost(url)
 
+            # VHOST COMMANDS
+            #LEFT OFF HERE: CREATE VHOST CMDS
 
+            # DIR COMMANDS
+            wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
+            mode = "dir"
+            dir_cmd = ['gobuster', 'dir', '-u', f'{url}', '-w', f'{wordlist}', '-x', 'php,txt,html', '-o', 'dirbuster.txt']
 
-    def run_ffuf(self):
-        pass
+            if port == 443:
+                dir_cmd.append('-k')
+
+            subprocess.run(dir_cmd, check=True)
+            return
+
+        def _check_vhost(self, url):
+            real_url = requests.get(url, verify = False, timeout = 10)
+            fake_url = requests.get(url, headers = {"Host": "fake.site"},verify = False, timeout = 10)
+
+            if len(real_url.content) == len(fake_url.content) and real_url.status_code == fake_url.status_code:
+                return False
+
+            return True
 
 def main():
     enum = WebEnumeration()
     ports = enum.run_nmap(ip)
+    enum.run_gobuster(ip, ports)
 
 if __name__ == '__main__':
     main()
