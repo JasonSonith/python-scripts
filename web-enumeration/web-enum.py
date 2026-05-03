@@ -36,7 +36,7 @@ class WebEnumeration:
                 ports[port] = {}
 
                 if elm.find('service') is not None:
-                    ports[port]['service name'] = elm.find('service').get('name')
+                    ports[port]['service_name'] = elm.find('service').get('name')
                     ports[port]['product'] = elm.find('service').get('product')
                     ports[port]['version'] = elm.find('service').get('version')
 
@@ -47,22 +47,23 @@ class WebEnumeration:
         except Exception as e:
             print('[+] Error: could not parse XML tree')
 
-            return ports
+        return ports
 
 
-    def run_gobuster(self, ip: str, ports: list):
-        dir_ports = set()
+    def run_gobuster(self, ip: str, ports: dict):
         port = None
 
-        for key, value, in ports.items():
+        for key, value in ports.items():
             if 'http' in value['service_name']:
-                port = {key}
-                print(f"[+] {value['service_name']} found in {key}")
+                port = key
+                print(f"[+] {value['service_name']} found in port {key}")
                 break
 
         if port is not None:
             url = f"http://{ip}:{port}"
-            is_vhost = _check_vhost(url)
+            is_vhost =self._check_vhost(url)
+            if not is_vhost:
+                pass
 
             # VHOST COMMANDS
             #LEFT OFF HERE: CREATE VHOST CMDS
