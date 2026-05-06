@@ -5,54 +5,57 @@ import sys
 import requests
 import re
 from pathlib import Path
+from urllib.parse import urlparse
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 parser = argparse.ArgumentParser(description="Automated web enumeration tool")
-parser.add_argument('-ip', type=str, required=True)
-
-try:
-    args = parser.parse_args()
-    ip = args.ip()
-
-except Exception as e:
-    print("[+] Error: No valid IP address passed in.\n Exiting Program...")
-    sys.exit()
+parser.add_argument('-i','--ip', required=True)
+args = parser.parse_args()
+ip = args.ip
 
 class WebEnumeration:
 
-    def __init__(self):
+    def __init__(self,ip):
         self.ip = ip
 
     def run_nmap(self, ip: str):
-        subprocess.run(['nmap', '-sC', '-sV', '-p-','-oX', 'nmap.xml', '-oN', 'nmap.txt', f'{ip}'], check=True)
-        file = 'nmap.xml'
+        Path('nmap').mkdir(exist_ok=True)
+        subprocess.run(['nmap', '-p-', '--min-rate', '1000', '-T4', '-oA', 'tcp_full', f'{ip}'], check=True)
+        file = 'tcp_full.xml'
         tree = ET.parse(file)
         root = tree.getroot()
 
         ports = {}
+        open_ports = [] 
 
         try:
             for elm in root.findall('.//port'):
                 port = (elm.get('portid'))
 
                 if port:
+                    state = elm.find('state')
+
+                    if state is not None and state.get('state') == 'open':
+                        open_ports.append(elm.get('portid'))
+            if open_ports:
+                subprocess.run(['nmap', '-p', ','.join(open_ports), '-sCV', '-oA', 'nmap/tcp_services', f'{ip}'], check=True)
+
+            for elm in root.findall('.//port'):
+                port = (elm.get('portid'))
+                if port:
                     port = int(port)
-
-                ports[port] = {}
-                service = elm.find('service')
-
-                if service is not None:
-                    ports[port]['service_name'] = service.get('name')
-                    ports[port]['product'] = service.get('product')
-                    ports[port]['version'] = service.get('version')
-
-                state = elm.find('state')
-                if state is not None:
-                    ports[port]['state'] = state.get('state')
-
+                    ports[port] = {}
+                     
+                    service = elm.find('service')
+                    if service is not None:
+                        ports[port]['service_name'] = service.get('name')
+                        ports[port]['product'] = service.get('product')
+                        ports[port]['version'] = service.get('version')
 
         except Exception as e:
             print('[+] Error: could not parse XML tree')
-            sys.exit()
+            sys.exit(1)
 
         return ports
 
@@ -67,30 +70,33 @@ class WebEnumeration:
                 break
 
         if port is not None:
-            url = f"http://{ip}:{port}"
-            is_vhost, len =self._check_vhost(url)
+            domain = self._get_vhost_domain(ip)
+            is_vhost, length_host = self._check_vhost(domain)
 
             if not is_vhost:
-                pass
+               print('[+] Skipping vhost mode for gobuster...') 
 
             else:
                 # VHOST COMMANDS
                 try:
+                    Path('gobuster').mkdir(exist_ok=True)
                     wordlist = '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt'
-                    vhost_cmd = ['gobuster', 'vhost', '-u', f'{url}', '-H', f'Host: FUZZ{url}', '-fs', f'{len}', '-o', 'vhost.txt']
+                    vhost_cmd = ['gobuster', 'vhost', '-u', f'http://{domain}','-w', f'{wordlist}', '--append-domain', '-fs', f'{length_host}', '-o', 'vhost/vhost.txt']
                     subprocess.run(vhost_cmd, check=True)
+                    vhost_file = Path('vhost/vhost.txt')
+                    valid_hosts = self._get_vhost_pattern(vhost_file)
 
-                    # Need to add DNS to /etc/host
-                    vhost_file = Path('vhost.txt')
-                    subprocess.run(['echo', f'"{ip}'])
+                    for host in valid_hosts:
+                        with open('/etc/hosts', 'a') as f:
+                            f.write(f'{ip} {host}\n')
 
                 except Exception as e:
                     print("[+] Error: Could not process vhost command...")
-                    sys.exit()
+                    sys.exit(1)
             
             # DIR COMMANDS
-            wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt"
-            dir_cmd = ['gobuster', 'dir', '-u', f'{url}', '-w', f'{wordlist}', '-x', 'php,txt,html', '-o', 'dirbuster.txt']
+            wordlist = "/usr/share/wordlists/dirb/common.txt"
+            dir_cmd = ['gobuster', 'dir', '-u', f'{domain}{port}', '-w', f'{wordlist}', '-x', "php,txt,html", '-o', 'gobuster/dirbuster.txt']
 
             if port == 443:
                 dir_cmd.append('-k')
@@ -106,6 +112,17 @@ class WebEnumeration:
             return False, None
 
         return True, len(real_url.content)
+    
+    def _get_vhost_domain(self, ip):
+        try:
+            r = requests.get(f'http://{ip}', allow_redirects=False, timeout=5)
+            location = r.headers.get('Location', '')
+            if location:
+                parsed = urlparse(location)
+                return parsed.hostname
+        except requests.RequestException:
+            print("[+]No vhost domain found...")
+        return None
 
     def _get_vhost_pattern(self,file):
         vhost_pattern = re.compile(r'Found:\s+(?P<host>\S+)\s+')
@@ -123,7 +140,7 @@ class WebEnumeration:
                     
 
 def main():
-    enum = WebEnumeration()
+    enum = WebEnumeration(ip)
     ports = enum.run_nmap(ip)
     enum.run_gobuster(ip, ports)
 

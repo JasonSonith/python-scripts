@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET 
+from pathlib import Path
 
-file = 'nmap.xml'
+file = Path('tcp_full.xml')
 tree = ET.parse(file)
 root = tree.getroot()
 
