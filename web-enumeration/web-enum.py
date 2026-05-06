@@ -104,7 +104,8 @@ class WebEnumeration:
             subprocess.run(dir_cmd, check=True)
             return
 
-    def _check_vhost(self, url):
+    def _check_vhost(self, domain):
+        url = f'http://{domain}'
         real_url = requests.get(url, verify = False, timeout = 10)
         fake_url = requests.get(url, headers = {"Host": "fake.site"},verify = False, timeout = 10)
 
