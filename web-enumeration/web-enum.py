@@ -21,8 +21,8 @@ class WebEnumeration:
 
     def run_nmap(self, ip: str):
         Path('nmap').mkdir(exist_ok=True)
-        subprocess.run(['nmap', '-p-', '--min-rate', '1000', '-T4', '-oA', 'tcp_full', f'{ip}'], check=True)
-        file = 'tcp_full.xml'
+        subprocess.run(['nmap', '-Pn', '-p-', '--min-rate', '5000', '-T4', '-oA', 'nmap/tcp_full', f'{ip}'], check=True)
+        file = 'nmap/tcp_full.xml'
         tree = ET.parse(file)
         root = tree.getroot()
 
@@ -39,8 +39,10 @@ class WebEnumeration:
                     if state is not None and state.get('state') == 'open':
                         open_ports.append(elm.get('portid'))
             if open_ports:
-                subprocess.run(['nmap', '-p', ','.join(open_ports), '-sCV', '-oA', 'nmap/tcp_services', f'{ip}'], check=True)
+                subprocess.run(['nmap', '-Pn','-p', ','.join(open_ports), '-sCV', '-oA', 'nmap/tcp_services', f'{ip}'], check=True)
 
+            tree = ET.parse('nmap/tcp_services.xml')
+            root = tree.getroot()
             for elm in root.findall('.//port'):
                 port = (elm.get('portid'))
                 if port:
@@ -55,35 +57,37 @@ class WebEnumeration:
 
         except Exception as e:
             print('[+] Error: could not parse XML tree')
+            print(f'[+] {e}\n')
             sys.exit(1)
 
         return ports
 
 
     def run_gobuster(self, ip: str, ports: dict):
+        Path('gobuster').mkdir(exist_ok=True)
         port = None
 
         for key, value in ports.items():
-            if 'http' in value['service_name']:
+            if value.get('service_name') and 'http' in value['service_name']:
                 port = key
                 print(f"[+] {value['service_name']} found in port {key}")
                 break
 
         if port is not None:
-            domain = self._get_vhost_domain(ip)
-            is_vhost, length_host = self._check_vhost(domain)
+            domain = self._get_vhost_domain(ip, port)
 
-            if not is_vhost:
-               print('[+] Skipping vhost mode for gobuster...') 
+            if domain is not None:
+                with open('/etc/hosts', 'a') as file:
+                    file.write(f'{ip} {domain}\n')
 
-            else:
-                # VHOST COMMANDS
+                baseline = requests.get(f'http://{domain}', verify=False, timeout=10)
+                length_host = len(baseline.content)
+
                 try:
-                    Path('gobuster').mkdir(exist_ok=True)
                     wordlist = '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt'
-                    vhost_cmd = ['gobuster', 'vhost', '-u', f'http://{domain}','-w', f'{wordlist}', '--append-domain', '-fs', f'{length_host}', '-o', 'vhost/vhost.txt']
+                    vhost_cmd = ['gobuster', 'vhost', '-u', f'http://{domain}','-w', f'{wordlist}', '--append-domain', '-o', 'gobuster/vhost.txt']
                     subprocess.run(vhost_cmd, check=True)
-                    vhost_file = Path('vhost/vhost.txt')
+                    vhost_file = Path('gobuster/vhost.txt')
                     valid_hosts = self._get_vhost_pattern(vhost_file)
 
                     for host in valid_hosts:
@@ -92,11 +96,15 @@ class WebEnumeration:
 
                 except Exception as e:
                     print("[+] Error: Could not process vhost command...")
+                    print(f'[+] {e}')
                     sys.exit(1)
+
+            else:
+                print('[+] Skipping vhost....')
             
             # DIR COMMANDS
             wordlist = "/usr/share/wordlists/dirb/common.txt"
-            dir_cmd = ['gobuster', 'dir', '-u', f'{domain}{port}', '-w', f'{wordlist}', '-x', "php,txt,html", '-o', 'gobuster/dirbuster.txt']
+            dir_cmd = ['gobuster', 'dir', '-u', f'http://{ip}:{port}', '-w', f'{wordlist}', '-x', "php,txt,html", '-o', 'gobuster/dirbuster.txt']
 
             if port == 443:
                 dir_cmd.append('-k')
@@ -114,13 +122,27 @@ class WebEnumeration:
 
         return True, len(real_url.content)
     
-    def _get_vhost_domain(self, ip):
+    def _get_vhost_domain(self, ip, port):
         try:
-            r = requests.get(f'http://{ip}', allow_redirects=False, timeout=5)
+            url = f'http://{ip}:{port}'
+            r = requests.get(f'{url}', allow_redirects=False, timeout=5)
+            print(f'[+] _get_vhost_domain: status={r.status_code}, Location={r.headers.get("Location", "<none>")}')
             location = r.headers.get('Location', '')
+
             if location:
-                parsed = urlparse(location)
-                return parsed.hostname
+                hostname = urlparse(location).hostname
+
+                if hostname:
+                    print(f'[+] Domain from Location header: {hostname}')
+                    return hostname
+            
+            r = requests.get(f'{url}', timeout=5)
+            domain = self._extract_domain_from_html(r.text)
+
+            if domain:
+                print(f"[+] Doamin from page body: {domain}")
+                return domain
+
         except requests.RequestException:
             print("[+]No vhost domain found...")
         return None
@@ -138,7 +160,20 @@ class WebEnumeration:
                         results.append(match['host'])
 
             return results
-                    
+
+    def _extract_domain_from_html(self, html):
+        patterns = [
+            r'[\w\-]+\.htb',                          # *.htb (HTB-specific)
+            r'@([\w\-]+\.[\w\-]+\.[\w\-]+)',          # email domains
+            r'href=["\']https?://([\w\-]+\.[\w\-.]+)', # links
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                return match.group(1) if match.lastindex else match.group(0)
+
+        return None
 
 def main():
     enum = WebEnumeration(ip)
