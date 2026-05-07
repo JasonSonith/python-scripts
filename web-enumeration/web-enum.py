@@ -80,12 +80,21 @@ class WebEnumeration:
                 with open('/etc/hosts', 'a') as file:
                     file.write(f'{ip} {domain}\n')
 
-                baseline = requests.get(f'http://{domain}', verify=False, timeout=10)
-                length_host = len(baseline.content)
+                # baseline = requests.get(f'http://{domain}', verify=False, timeout=10)
+                # length_host = len(baseline.content)
 
                 try:
                     wordlist = '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt'
-                    vhost_cmd = ['gobuster', 'vhost', '-u', f'http://{domain}','-w', f'{wordlist}', '--append-domain', '-o', 'gobuster/vhost.txt']
+
+                    vhost_cmd = [
+                        'gobuster', 
+                         'vhost',
+                         '-u', f'http://{domain}',
+                         '-w', wordlist,
+                         '--append-domain',
+                         '-o', 'gobuster/vhost.txt'
+                    ]
+
                     subprocess.run(vhost_cmd, check=True)
                     vhost_file = Path('gobuster/vhost.txt')
                     valid_hosts = self._get_vhost_pattern(vhost_file)
@@ -104,7 +113,16 @@ class WebEnumeration:
             
             # DIR COMMANDS
             wordlist = "/usr/share/wordlists/dirb/common.txt"
-            dir_cmd = ['gobuster', 'dir', '-u', f'http://{ip}:{port}', '-w', f'{wordlist}', '-x', "php,txt,html", '-o', 'gobuster/dirbuster.txt']
+
+            dir_cmd = [
+                'gobuster',
+                'dir',
+                '-u', f'http://{ip}:{port}',
+                '-w', f'{wordlist}',
+                '-x', "php,txt,html",
+                '-b', '404,400',
+                '-o', 'gobuster/dirbuster.txt'
+            ]
 
             if port == 443:
                 dir_cmd.append('-k')
