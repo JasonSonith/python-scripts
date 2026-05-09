@@ -80,11 +80,11 @@ class WebEnumeration:
                 with open('/etc/hosts', 'a') as file:
                     file.write(f'{ip} {domain}\n')
 
-                # baseline = requests.get(f'http://{domain}', verify=False, timeout=10)
-                # length_host = len(baseline.content)
+                baseline = requests.get(f'http://{domain}', verify=False, timeout=10)
+                length_host = len(baseline.content)
 
                 try:
-                    wordlist = '/usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt'
+                    wordlist = '/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt'
 
                     vhost_cmd = [
                         'gobuster', 
@@ -92,6 +92,7 @@ class WebEnumeration:
                          '-u', f'http://{domain}',
                          '-w', wordlist,
                          '--append-domain',
+                        '--exclude-length', f'{length_host}',
                          '-o', 'gobuster/vhost.txt'
                     ]
 
@@ -106,18 +107,23 @@ class WebEnumeration:
                 except Exception as e:
                     print("[+] Error: Could not process vhost command...")
                     print(f'[+] {e}')
-                    sys.exit(1)
+                    print('[+] Going to try gobuster\n')
 
             else:
                 print('[+] Skipping vhost....')
             
             # DIR COMMANDS
             wordlist = "/usr/share/wordlists/dirb/common.txt"
+            if domain:
+                url = f'http://{domain}'
+
+            else:
+                url = f'http://{ip}:{port}'
 
             dir_cmd = [
                 'gobuster',
                 'dir',
-                '-u', f'http://{ip}:{port}',
+                '-u', url,
                 '-w', f'{wordlist}',
                 '-x', "php,txt,html",
                 '-b', '404,400',
@@ -133,7 +139,7 @@ class WebEnumeration:
     def _check_vhost(self, domain):
         url = f'http://{domain}'
         real_url = requests.get(url, verify = False, timeout = 10)
-        fake_url = requests.get(url, headers = {"Host": "fake.site"},verify = False, timeout = 10)
+        fake_url = requests.get(url, headers = {"Host": "totallybogus12341431.invalid"},verify = False, timeout = 10)
 
         if len(real_url.content) == len(fake_url.content) and real_url.status_code == fake_url.status_code:
             return False, None
